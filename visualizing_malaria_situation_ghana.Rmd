@@ -1,0 +1,500 @@
+---
+title: "Malaria prevalence in Ghana: Data collection and visualization"
+author: "Tatiana Alonso Amor"
+date: "February 2021"
+output:
+  html_document:
+      toc: true
+      toc_float: true
+      theme: cosmo 
+      highlight: tango
+      df_print: paged
+---
+
+<style type="text/css">
+  body{
+  font-size: 14pt;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# Abstract
+
+Often times decision makers and technical advisors find themselves needing to collect data and plot it in the form of a map for a given country or region to share with other stakeholders. This is particularly true in the field of Public Health. Short deadlines, increasing loads of work, continuous changes in available data and lack of technical knowledge, can make finding time to plot this quantities somehow challenging. In this tutorial, we will work our ways to making a malaria prevalence map for Ghana using data from the _Demographic and Health Surveys Program_ (DHS). We will access the data using the DHS r package _rdhs_ and will select the malaria prevalence indicator for all surveys conducted in Ghana. We will create a time series faceted plot of this indicator using _ggplot_. Later, we will move onto making our prevalence map. We will plot the administrative areas of Ghana and discuss what a shapefile is. We will join our spatial data to the malaria prevalence per region in Ghana and produce our first prevalence map. Finally, we will make an interactive map and discuss a possible integration to Shiny dashboards or apps. 
+
+## Malaria Background
+<img src="./Pictures/mosquito.png" width="100" align="left" style="margin: 0px 10px 0px 0px;" /><p>
+Malaria is an endemic disease that remains a real public health problem as it continues to be a major cause of morbidity and mortality worldwide. According to the World Health Organization (WHO), the number of malaria cases is estimated at more than 229  million and the main burden of disease (more than 95%) is in sub-Saharan Africa with around 409 thousands deaths each year. 
+
+Malaria is a mosquito-borne infectious disease caused by a parasite of the _Plasmodium_ group. It is most commonly spread by an infected female _Anopheles_ mosquito that while feeding spreads the parasite into the human or animal host. The parasite then mutates within the host causing symptoms such as fever, tiredness, vomiting, and headaches. In severe cases it can lead to death. An individual that has survived a first infection of malaria and who has a continuous exposure to malaria creates some resistance to new infections resulting in milder symptoms. Thus, the disease severely affects children.
+
+The disease is widespread in the tropical and subtropical areas including Sub-Saharan Africa, Asia and Latin America.
+
+Some definitions:
+
+* __Malaria prevalence:__ Percentage of the whole population that tested positive for malaria.
+* __RDT:__ Rapid diagnostic testing, it assists in the diagnosis of malaria by detecting evidence of malaria parasites in human blood. </p> 
+
+## Ghana Background
+<img src="./Pictures/Ghana_map.png" width="450" align="left" style="margin: 0px 10px 0px 0px;" /><p> Ghana is a country  along the Gulf of Guinea and the Atlantic Ocean, in the sub-region of West Africa. It neighbors the Ivory Coast in the west, Burkina Faso in the north and Togo in the east. The [WHO reports](https://www.who.int/publications/i/item/9789240015791) that Ghana had almost 5 million malaria cases in 2019 and 11 thousand deaths for a population of 30 million people. Mortality rates have been in decline since the year 2000 and morbidity since 2014. Currently, Ghana is composed by 16 regions. For this tutorial we will use the old Ghana administrative division of 10 regions. We do this as all the available surveys that we will work with were conducted before this administrative change.</p>
+
+## Demographic Health and Suvery (DHS) Background
+
+<img src="./Pictures/logodhs.png" width="200" align="left" style="margin: 10px 20px 0px 0px;" /><p>The Demographic Health and Survey Program (DHS) has provided technical assistance to more than 400 surveys in over 90 countries, providing a fantastic database to understand the health and population trends in developing countries. The surveys conducted by DHS covered topics such as malaria, nutrition, HIV/AIDS, family planning, fertility and maternal and child health. It is primarily funded by the U.S. Agency for International Development (USAID), but contributions from other donors and the participating countries also support surveys.</p>
+
+# Broad topics covered by the tutorial
+* Epidemiology
+* Public Health
+* Visualization
+
+# Learning goals
+In this tutorial we will learn the following topics:
+
+* how to access DHS data from the r package _rdhs_
+* how to search this database for an specific country, survey theme and specific indicator
+* how to plot the administrative areas of a country using a publicly available shapefile
+* how to join the DHS data with the country shapefile and produce a malaria prevalence map
+* how to make an interactive map 
+
+# Intended audience
+This tutorial is targeted to anyone who is already familiar with R and tidyverse (dplyr and ggplot), but is not an expert.
+This person, would like to represent their data in a form of a map and would, otherwise, spend a long time trying to do this on their own.  
+As we will use data from DHS, this tutorial is also ideal for people working in public health, such as decision makers, who would like to know how to access this data and visualize it for their work. 
+In this tutorial we will look at malaria indicators from DHS in Ghana. However, it is important to note that the DHS Programme does not only collect data on malaria but has collected, analyzed, and disseminated data on population, health, HIV, and nutrition through more than 400 surveys in over 90 countries.
+
+# Prerequisites / requirements
+
+* Familiarity with tidyverse, specifically with _dplyr_ and _ggplot_.
+
+* We will work on Rstudio and the following libraries will have to be already installed and loaded in their environments:
+  * tidyverse
+  * rdhs
+  * rgdal
+  * raster
+  * tmap
+
+
+* Participants will need to download the _./GHA_shapefile_ folder provided in this Git repository and place it in their working directory.
+
+* Internet connection is required to access the DHS data.
+
+# Structure of tutorial and durations
+
+* Introduction ~20'
+* DHS data set explication ~20'
+* DHS exercise ~30'
+* Shapefile explication ~20'
+* Malaria prevalence map expl. ~20'
+* Malaria prevalence map exercise ~20'
+* Interactive map ~15'
+* Interactive map exploration ~10'
+* Q&A ~15'
+
+Total duration ~3hs.
+The times per section are estimated as maximum times.
+
+# Instructor biography
+<img src="./Pictures/TAA.jpg" width="200" align="left" style="margin: 0px 10px 0px 0px;" /><p>Tatiana works at the Swiss Tropical and Public Health Institute ([Swiss TPH](https://www.swisstph.ch/en/)) in Basel, Switzerland. She is part of the Analytics and Intervention Modelling group lead by Emilie Pothin. There, she does data analysis and mathematical modelling supporting countries in Africa to make evidence-based decisions to reduce their malaria burden.  Currently, she is responsible for the support to Mozambique and Ghana. 
+
+Tatiana has a PhD degree in Physics from the Federal University of Ceara (Brazil) and a M.Sc-Bachelors degree in Physics from the University of Buenos Aires (Argentina). During her doctoral studies she got interested in knowing what visual strategies would people use when looking for Wally and wrote a whole thesis about it. Afterwards, she participated in a project-based data science course (S2DS), working for the Food Standard Agency in the UK. During this experience, Tatiana realized that she loves working in a team and that she is passionate about data visualization. She knew she wanted to be in a position where she could turn data into value and help in the decision making process. 
+
+She works in R EVERYDAY.</p>
+
+
+
+# THE TUTORIAL
+
+__Hello!__ Welcome to this tutorial on malaria, DHS and maps! 
+
+Let's first set our environment. We will use these libraries. If you haven't done it yet, go ahead and load them.
+
+```{r load libraries, eval = TRUE}
+# to handle data 
+library(tidyverse)
+# to extract public data
+library(rdhs)
+# to plot maps
+library(rgdal)
+library(raster)
+library(tmap)
+
+```
+Also, make sure to have the folder _"./GHA_shapefile"_ in your working directory.
+
+## Download malaria prevalence for GHA
+
+Now that we are all set, let's load some data! We are gonna load data that comes from the DHS Program. The data is currently available through their [r package](https://docs.ropensci.org/rdhs/) and it is the one that's shown in the [DHS Stat Compiler](https://www.statcompiler.com/en/).
+
+Okay, let's dive in!
+
+First, let's check what are the survey characteristics available:
+```{r survey characteristics}
+sc <- dhs_survey_characteristics()
+# what does it look like?
+head(sc)
+#how many surveys characteristics are?
+nrow(sc)
+```
+
+Remember we will focus in Malaria indicators, but there is __a lot__ of other things to look at.
+
+Now we want to know what specific indicators are available for a given type of survey. In our case, for the malaria surveys.
+
+```{r load rdhs data, eval = TRUE}
+# load all tags for possible indicators
+indicators <- dhs_indicators()
+
+indicators[order(indicators$IndicatorId),][1:5,c("IndicatorId", "Definition")]
+```
+
+Explore the indicators database, what indicators does it have? Pay special attention to the field "Level1".
+
+Let's filter those indicators that are malaria related, 
+
+```{r filter mal_indicators, eval = TRUE}
+mal_ind <- indicators %>% dplyr::filter(Level1 == "Malaria")
+mal_ind
+```
+
+Now we want to find the malaria indicator for malaria prevalence confirmed by RDTs.
+What do you see? What happens if you write them in all capital letters? and if you look only for RDTs?
+
+```{r filtering malaria indicators}
+mal_ind %>% dplyr::filter (grepl('Malaria|RDT|Prevalence', Definition)) 
+```
+
+Fantastic! So we now that the indicator that we are interested in has the ID: "ML_PMAL_C_RDT".
+
+Now we are gonna download the DHS data for the ML_PMAL_C_RDT indicator for Ghana. 
+Countries names can be accessed though a country ID, which we can see by looking into the _dhs_countries_ function.
+
+```{r countries ids}
+dhs_countries(returnFields=c("CountryName", "DHS_CountryCode"))
+```
+For Ghana, the country ID is __GH__. To extract the data from DHS into a dataframe we use the function _dhs_data_ with the fields 
+
+* `countryIds = "GH"`
+* `indicatorIds = "ML_PMAL_C_RDT"` 
+* `breakdown = "subnational"` , so we can have prevalence values per region (the default is to give estimates at the national level)
+
+```{r load DHS data}
+pr_gha <- dhs_data(countryIds = c("GH"), indicatorIds = "ML_PMAL_C_RDT", breakdown = "subnational")
+pr_gha
+#what are the regions that we have here?
+unique(pr_gha$CharacteristicLabel)
+```
+
+We have our data! Now, let's tidy it up a bit so it's easier to handle moving on. We will rename three columns that we will need to use to make our plots. We will use the _rename_ function from tidyverse/dplyr and change:
+
+* CharacteristicLabel for Region
+* Value for Prevalence
+* SurveyYearLabel for Year
+
+The DHS data has an "extra" region which is a composition of the Northen, upper West and upper East regions, we will remove this region called "Northern, Upper West, Upper East" by selecting (filtering) all Regions that are not named like that,
+
+```{r tidy the dhs data}
+#tidy some data
+pr_gha_tidy = pr_gha %>% dplyr::rename(Region = CharacteristicLabel
+                                  , Prevalence = Value
+                                  , Year = SurveyYearLabel) %>%
+        filter(Region != "Northern, Upper West, Upper East")
+
+```
+Now let's plot the time series of prevalence versus year, using tidyverse/ggplot. 
+We will plot the dataframe `pr_gh_tidy` and will plot a line and point plot with a shaded area denoting the confidence interval for the prevalence value.
+
+```{r time series Plot, fig.width = 12, fig.height = 6}
+ggplot(pr_gha_tidy, aes(x= as.numeric(Year), y = Prevalence, ymin = CILow, ymax = CIHigh))+
+  # shaded area for the confidence interval
+  geom_ribbon(alpha =.3, fill = "aquamarine4")+
+  # line plot por mean prevalence
+  geom_line(color = "aquamarine4")+
+  # point plot for mean prevalence
+  geom_point(size = 2, color = "aquamarine4")+
+  # create facets for each region
+  facet_wrap(~Region, ncol = 5)+
+  # choose the minimal theme
+  theme_minimal(base_size = 18)+
+  # write our labels
+  labs(x = element_blank()
+       , y = "Prevalence (%)"
+       , caption = "Source: DHS")+
+  #specify breaks in scale
+  scale_x_continuous(breaks = c(2014,2016,2019))+
+  theme(panel.spacing = unit(2, "lines"))
+```
+
+***
+
+### Excercise 1:
+Can you make a similar plot to this for the indicator: "ML_NETC_C_ANY"?
+
+What does this indicator relates to?
+
+__Careful!__ does this indicator have Confidence intervals? If not, then don't plot them.
+
+__Result:__
+```{r result exc.1, echo = FALSE, fig.width= 12, fig.height = 6}
+pr_gha_net <- dhs_data(countryIds = c("GH"), indicatorIds = "ML_NETC_C_ANY", breakdown = "subnational")
+pr_gha_net_tidy = pr_gha_net %>% dplyr::rename(Region = CharacteristicLabel
+                                  , ProportionKidsUnderNet = Value
+                                  , Year = SurveyYearLabel) %>%
+        filter(Region != "Northern, Upper West, Upper East")
+
+ggplot(pr_gha_net_tidy, aes(x= as.numeric(Year), y = ProportionKidsUnderNet))+
+  # shaded area for the confidence interval
+  # line plot por mean prevalence
+  geom_line(color = "aquamarine4")+
+  # point plot for mean prevalence
+  geom_point(size = 2, color = "aquamarine4")+
+  # create facets for each region
+  facet_wrap(~Region, ncol = 5)+
+  # choose the minimal theme
+  theme_minimal(base_size = 18)+
+  # write our labels
+  labs(x = element_blank()
+       , y = "Children under 5 who slept under any net"
+       , caption = "Source: DHS")+
+  #specify breaks in scale
+  #scale_x_continuous(breaks = c(2014,2016,2019))+
+  theme(panel.spacing = unit(2, "lines"))
+```
+
+***
+
+## Shapefiles
+
+First we need to get the shapefile for the setting that we want to analyze. In this case I took the first administrative region for Ghana from this website [https://data.humdata.org/dataset/ghana-administrative-boundaries](https://data.humdata.org/dataset/ghana-administrative-boundaries). 
+
+But, what is a shapefile?
+
+We look in Wikipedia...
+
+> The shapefile format is a geospatial vector data format for geographic information system (GIS) software.
+Mandatory files
+
+>    `.shp` — shape format; the feature geometry itself {content-type: x-gis/x-shapefile}
+>    `.shx` — shape index format; a positional index of the feature geometry to allow seeking forwards and backwards quickly {content-type: x-gis/x-shapefile}
+>    `.dbf` — attribute format; columnar attributes for each shape, in dBase IV format {content-type: application/octet-stream OR text/plain}
+
+That's why we have so many other files in our GHA_shapefile folder!
+
+Load the shapefile using _rgdal_
+```{r load shapefile}
+Admin1 <- file.path("GHA_shapefile"
+                    , "GHA_admbndp1_1m_GAUL.shp") %>% readOGR(verbose = FALSE)
+
+#what does this look like?
+print(Admin1)
+
+#Let's access GHA region's names
+Admin1$ADM1_NAME
+
+#How many regions do we have?
+length(Admin1$ADM1_NAME)
+```
+
+### Let's build our first map
+
+To make our maps we are gonna use the library _tmap_, this library has a syntax similar to the one of ggplot and allows us to plot maps and spatial objects in a similar fashion as we would do with dataframes in ggplot.
+
+First we need to say what is the data that we are gonna plot, in this case `Amdin1` to _tm_shape_
+Second we decide what we want to plot, in this case we want to plot the 10 districts in Ghana, so we want to plot polygons. For that we call _tm_polygons_ and choose the column name that we want to have in the legend describing each polygon, "ADM1_NAME"
+
+```{r plot admin map}
+tm_shape(Admin1)+
+  tm_polygons("ADM1_NAME")
+```
+
+We have a map! But it's a bit messy. The legend is on top of our map, the color palette could be improved and maybe we would like to add some references and the names of the region. Let's look at two options: keeping the region name in the legend or writing the region name on top of the region. 
+
+We will use the functions:
+
+ * _tm_compass_ 
+ * _tm_scale_bar_
+ * _tm_layout_
+
+Go on and check the documentation for these functions to see what they do. (Typing `?tm_layout` in your Rstudio console will point you to the documentation of that function)
+
+* Keeping the region name in the legend
+
+```{r plot admin map modif}
+#tmap_mode("plot")
+tm_shape(Admin1)+
+  tm_polygons("ADM1_NAME"
+              , palette ="viridis"
+              , border.col = "white"
+              , title = "Region")+
+  tm_compass(type= "rose"
+             , position=c("right", "bottom")
+             , size = 4)+
+  tm_scale_bar(position = c("right", "bottom")
+               )+
+  tm_layout (frame = F
+             , asp = 0
+             , legend.outside.position = T
+             , legend.text.size = 1.2
+             , legend.title.size = 1.4)
+```
+
+* Writing the region name on top of the region
+
+```{r map plot label area}
+# or showing the names inside the regions
+tm_shape(Admin1)+
+  tm_polygons("ADM1_NAME"
+              , palette ="viridis"
+              , border.col = "white"
+              , legend.show = F)+
+  tm_text("ADM1_NAME"
+          , scale = 1.1)+
+  tm_compass(type= "rose"
+             , position=c("right", "bottom")
+             , size = 4)+
+  tm_scale_bar(position = c("right", "bottom")
+               )+
+  tm_layout (frame = F
+             , asp = 0)
+
+```
+
+***
+
+### Excercise 2
+
+Play around with the options in tm_layout, what changes?
+
+Try using other color palettes: "plasma", "RdBu", "Blues", "magma" ...
+
+What about other types of compass: "arrow", "4star", "8star", "radar", "rose"
+
+What else would you like to add to this plot?
+
+***
+
+## Malaria prevalence per region
+
+Now we can finally plot our prevalence map! For that we need to merge the Ghana shapefile with our DHS dataframe. We will use the _merge_ function from the _raster_ package.
+
+We are gonna merge these two objects by the Regions names. That means that, for example, for the polygon in our shapefile corresponding to the region Ashanti, we are gonna want to join it to the correspondent malaria prevalence for Ashanti for each survey year.
+
+Then, our first step is to check how are the Regions names spelled in each object and modify it so that they match.
+See how we use the code `pr_gha_tidy$Region[which(pr_gha_tidy$Region== "OLD REGION NAME")]  = "NEW REGION NAME"` to look for all occurrences of the old region name and replace by the new name.
+
+```{r prepare data to plot}
+#look at the regions names in the shapefile
+Admin1$ADM1_NAME
+
+#look at the regions names in the dhs data
+unique(pr_gha_tidy$Region)
+
+#We need to modify some names so that they can match in the dhs file and in the shapefile
+#easier to modify on the dhs data
+pr_gha_tidy$Region[which(pr_gha_tidy$Region=="..Upper East")] = "Upper East"
+pr_gha_tidy$Region[which(pr_gha_tidy$Region=="..Northern")]   = "Northern"
+pr_gha_tidy$Region[which(pr_gha_tidy$Region=="..Upper West")] = "Upper West"
+pr_gha_tidy$Region[which(pr_gha_tidy$Region=="Brong-Ahafo")]  = "Brong Ahafo"
+
+unique(pr_gha_tidy$Region)
+```
+
+Great! Now all the regions in the DHS database look like the ones we have in our Ghana shapefile.
+
+ We need to specify by which columns to merge our two objects. For this we use the `by.x` and `by.y` options and specify the column name for each object. 
+
+__Interesting:__  The DHS dataset has 3 entries for each region. That is, for example, for Ashanti we have prevalence values for the years 2014, 2016 and 2019. Then we need to add the option `duplicateGeoms = TRUE`. This options allows to duplicate the polygons so that they can be linked to different prevalence values. If we don't do this, we are gonna an error. (Try it!)
+
+```{r merge shapefile with dhs data}
+pr_gha_shp = raster::merge(Admin1, pr_gha_tidy, by.x = "ADM1_NAME", by.y = "Region", duplicateGeoms=TRUE)
+```
+
+Almost there! Now, let's plot! All we need to do is plot things as we had done for the first map we did. 
+
+Interesting things to note:
+
+* this time, the column we want to represent in _tm_polygons_ is "Prevalence". An appropriate color palette will allow us to show the changes in time and space for the malaria prevalence in Ghana.
+* we used the _tm_facets_ that, analogously to the facet_wrap in ggplot, will show for each "Year" a map.
+
+```{r plot prevalence maps, fig.height= 4, fig.width= 10}
+my_colors <- c(RColorBrewer::brewer.pal(8, "RdBu")[1:3],RColorBrewer::brewer.pal(8, "RdBu")[5:8]) 
+my_colors <- rev(my_colors)
+
+tm_shape(pr_gha_shp)+
+  tm_polygons("Prevalence"
+              , palette = my_colors
+              , border.col = "white")+
+  tm_facets("Year")+
+  tm_layout (frame = F
+             , asp = 0
+             , panel.label.bg.color = "white"
+             , panel.label.size = 1.3
+             , frame.lwd = NA
+             , legend.text.size = 1.
+             , legend.title.size = 1.4
+             , legend.outside.position = "right" 
+             , legend.outside.size = .2)
+```
+
+
+***
+### Excercise 3:
+
+Can you make a faceted map for the other indicator that we looked in Exc. 1, "ML_NETC_C_ANY"?
+
+__Result:__
+
+```{r plot nets maps, echo = FALSE, fig.height= 3, fig.width= 12}
+
+pr_gha_net_tidy$Region[which(pr_gha_net_tidy$Region=="..Upper East")] = "Upper East"
+pr_gha_net_tidy$Region[which(pr_gha_net_tidy$Region=="..Northern")]   = "Northern"
+pr_gha_net_tidy$Region[which(pr_gha_net_tidy$Region=="..Upper West")] = "Upper West"
+pr_gha_net_tidy$Region[which(pr_gha_net_tidy$Region=="Brong-Ahafo")]  = "Brong Ahafo"
+
+pr_gha_net_shp = raster::merge(Admin1, pr_gha_net_tidy, by.x = "ADM1_NAME", by.y = "Region", duplicateGeoms=TRUE)
+
+
+tm_shape(pr_gha_net_shp)+
+  tm_polygons("ProportionKidsUnderNet"
+              , palette = rev(my_colors)
+              , border.col = "white"
+              , title = "Kids slept\n under a net (%)")+
+  tm_facets("Year")+
+  tm_layout (frame = F
+             , asp = 0
+             , panel.label.bg.color = "white"
+             , panel.label.size = 1.3
+             , frame.lwd = NA
+             , legend.text.size = 1.
+             , legend.title.size = 1.4
+             , legend.outside.position = "right" 
+             , legend.outside.size = .2)
+```
+
+
+***
+
+## Making an interactive map
+
+Now we will do an interactive plot. This kind of plots are great to incorporate to dashboards or apps build in Shiny. Here we are gonna do a simple version of the prevalence map in Ghana that will take literally one second!
+
+All we need to do is give a name to our map, in this case `g` , add the option `as.layers=TRUE` in _tm_facets_ and then add the line `tmap_leaflet(g)` at the end of the script. That's it! We have a nice interactive plot! Go and play with the layers. 
+
+```{r interactive map}
+g <- tm_shape(pr_gha_shp)+
+  tm_polygons("Prevalence"
+              , palette = my_colors
+              , border.col = "white"
+              , alpha =.7)+
+  tm_facets("Year", as.layers = TRUE)
+
+tmap_leaflet(g)
+```
+
+### Integration with Shiny
+
+One thing that we note from the previous plot is that there are multiple legends even when we are only selecting one layer. I've looked A LOT to fix this, but haven't been able to find something that would do the trick. BUT, if you are putting this map in a shiny up what you could do is to subset you data with an user input and then you would be able to show the legend for tha layer only.
+
+__That's all for today! Happy plotting!__
